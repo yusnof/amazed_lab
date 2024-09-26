@@ -92,7 +92,7 @@ public class ForkJoinSolver extends SequentialSolver {
     @Override
     public List<Integer> compute() {
         // Start the parallel search from the start node with 0 initial steps
-        return parallelSearch();
+        return parallelSearch(0);
     }
 
     /**
@@ -102,10 +102,10 @@ public class ForkJoinSolver extends SequentialSolver {
      * @param steps       the number of steps taken so far
      * @return the path to the goal or <code>null</code> if no path is found
      */
-    private List<Integer> parallelSearch()
+    private List<Integer> parallelSearch(int steps)
 	{
 		
-		int step = 0;
+		int step = steps; 
 		
 	    currentPlayer = maze.newPlayer(start);
 		
