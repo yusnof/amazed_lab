@@ -6,12 +6,10 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
+
 import java.util.Set;
 import java.util.Stack;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedDeque;
+
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -39,12 +37,6 @@ public class ForkJoinSolver extends SequentialSolver {
    //private static boolean goalFound = false;
 
     private static AtomicBoolean goalFound = new AtomicBoolean( ); 
-
-    //private  Map<Integer, Integer> predecessor  = new ConcurrentHashMap<>(); 
-
-    List<Integer> res = Collections.synchronizedList(new ArrayList<>());
-
-    static Set<Integer>  visited = new ConcurrentSkipListSet<>(); 
 
     // Stores the current player assigned to this solver instance
     int currentPlayer;
@@ -88,8 +80,6 @@ public class ForkJoinSolver extends SequentialSolver {
         this.currentPlayer = player;  // Set the player for this solver instance
         this.start = start;  // Set the start node for this solver
         this.visited = visited;  // Keep track of the visited nodes
-        // frontier.push(start); 
-        visited.add(player); 
     }
 
     /**
@@ -102,7 +92,7 @@ public class ForkJoinSolver extends SequentialSolver {
     @Override
     public List<Integer> compute() {
         // Start the parallel search from the start node with 0 initial steps
-        return parallelSearch(start, 0);
+        return parallelSearch();
     }
 
     /**
@@ -112,76 +102,65 @@ public class ForkJoinSolver extends SequentialSolver {
      * @param steps       the number of steps taken so far
      * @return the path to the goal or <code>null</code> if no path is found
      */
-    private List<Integer> parallelSearch(int currentNode, int steps) {
-        
-        // Push the initial node to the frontier (stack) to start visiting it
-        frontier.push(currentNode);
+    private List<Integer> parallelSearch()
+	{
+		
+		int step = 0;
+		
+	    currentPlayer = maze.newPlayer(start);
+		
+		frontier.push(start);
+		
+			
+			while (!frontier.empty() && !goalFound.get()) {
+				
+				int currentNode = frontier.pop();
+				
+				if (visited.add(currentNode)||currentNode==start) {
+					
+					if (maze.hasGoal(currentNode)) {
+						
+						goalFound.set(true);
+						
+						maze.move(currentPlayer, currentNode);
+						
+						step++;
+						return pathFromTo(start, currentNode);
+					}
 
-        // Loop to visit each node in the frontier (stack)
-        while (!this.frontier.isEmpty() && !goalFound.get()) {
-            
-            // Pop the next node to visit from the frontier
-            currentNode = frontier.pop();
+					
+					maze.move(currentPlayer, currentNode);
+					
+					step++;
+					boolean onWay = true;
+					for (int neighbor: maze.neighbors(currentNode)) {
 
-            // If this node has already been visited, skip it
-            if (!visited.add(currentNode)) {
-                continue;
-            }
-
-            // Move the current player to the current node
-            maze.move(currentPlayer, currentNode);
-
-            // If the current node is a goal, mark the goal as found and return the path
-            if (maze.hasGoal(currentNode)) {
-                goalFound.set(true);;  // Goal found
-                HelperJoiner();  // Join all forked solvers
-                return pathFromTo(start, currentNode);  // Return the path from start to the goal
-            }
-            
-            // Prepare to visit the neighbors of the current node
-            ArrayList<Integer> neighborsToVisit = new ArrayList<>();
-
-            List<Integer> threadSafeArray = Collections.synchronizedList(neighborsToVisit);
-
-            // Add unvisited neighbors to the list of nodes to visit
-            for (Integer nb : maze.neighbors(currentNode)) {
-                if (!visited.contains(nb)) 
-                {threadSafeArray.add(nb);}
-            }
-
-            // For each neighbor, either continue searching or fork a new solver
-            for (int i = 0; i < threadSafeArray.size(); i++) {
-                int neighbor = threadSafeArray.get(i);
-                predecessor.put(neighbor, currentNode);  // Record the predecessor for this neighbor
-
-                // Visit the first neighbor by pushing it to the frontier
-                if (i == 0) {
-                    frontier.push(neighbor);
-                } 
-                // Fork a new solver for the remaining neighbors
-                else {
-                    int newPlayer = maze.newPlayer(neighbor);  // Create a new player for the forked task
-                    ForkJoinSolver child = new ForkJoinSolver(maze, newPlayer, neighbor, visited);  // Fork a new solver
-                    childSolvers.add(child);  // Add the forked solver to the list of child solvers
-                    child.fork();  // Fork the task (run it in parallel)
-                }
-            }
-        }
-
-        // After visiting all nodes, join the results from all forked solvers
-        List<Integer> pathToGoal = HelperJoiner();
-
-        // If a path to the goal is found, combine it with the current path
-        if (pathToGoal != null) {
-            int mid = pathToGoal.remove(0);  // Remove the first node from the path to avoid duplication
-            List<Integer> pathFromStart = pathFromTo(start, mid);  // Get the path from the start to the first node
-            pathFromStart.addAll(pathToGoal);  // Append the remaining part of the path
-            return pathFromStart;
-        }
-
-        // If no path is found, return null
-        return null;
-    }
+						
+						if(!visited.contains(neighbor)) {
+							predecessor.put(neighbor, currentNode);
+							
+							if (onWay || step<forkAfter) {
+								
+								frontier.push(neighbor);
+								onWay=false;
+							}
+							
+							else {
+								if(visited.add(neighbor)){
+									step=0;
+									ForkJoinSolver childSolver = new ForkJoinSolver(maze,forkAfter,neighbor,visited);
+									childSolvers.add(childSolver);
+									childSolver.fork();
+								}
+							}
+						}
+					}
+				}
+			}
+			// all nodes explored, no goal found
+		
+			return HelperJoiner();
+		}
 
     /**
      * Helper method to join results from all forked solvers.
@@ -189,18 +168,16 @@ public class ForkJoinSolver extends SequentialSolver {
      * @return the path to the goal or <code>null</code> if no path is found
      */
     private List<Integer> HelperJoiner() {
-        List<Integer> result = null;
-
-        // Join each forked solver and check if it has found a valid path
-        for (ForkJoinSolver solver : childSolvers) {
-            List<Integer> partialPath = solver.join();  // Join the forked task
-            if (partialPath != null) {
-                result = partialPath;  // If a path is found, return it
-            }
-        }
-
-        // Return the result, which may contain the path to the goal
-        return result;
-    }
+        
+        for (ForkJoinSolver child:childSolvers) {
+			List<Integer> result = child.join();
+			if(result!=null) {
+				List<Integer> myPath = pathFromTo(start, predecessor.get(child.start));
+				myPath.addAll(result);
+				return myPath;
+			}
+		}
+		return null;
+	}
     
 }
