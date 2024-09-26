@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Instances of <code>ForkJoinSolver</code> should be run by a
  * <code>ForkJoinPool</code> object.
  */
-public class ForkJoinSolver extends SequentialSolver {
+public class ExtraForkJoinSolver extends SequentialSolver {
 
     @Override
     protected void initStructures(){
@@ -31,7 +31,7 @@ public class ForkJoinSolver extends SequentialSolver {
     }
 
     // List to keep track of all the child solvers created during the search
-    List<ForkJoinSolver> childSolvers = new ArrayList<>();
+    List<ExtraForkJoinSolver> childSolvers = new ArrayList<>();
 
     // Static variable to track if any player has found the goal
    //private static boolean goalFound = false;
@@ -47,7 +47,7 @@ public class ForkJoinSolver extends SequentialSolver {
      *
      * @param maze the maze to be searched
      */
-    public ForkJoinSolver(Maze maze) {
+    public ExtraForkJoinSolver(Maze maze) {
         super(maze);  // Call to the parent constructor
     }
 
@@ -62,7 +62,7 @@ public class ForkJoinSolver extends SequentialSolver {
      *                  <code>forkAfter <= 0</code> the solver never
      *                  forks new tasks
      */
-    public ForkJoinSolver(Maze maze, int forkAfter) {
+    public ExtraForkJoinSolver(Maze maze, int forkAfter) {
         this(maze);  // Call the primary constructor
         this.forkAfter = forkAfter;  // Set the number of steps after which to fork
     }
@@ -75,7 +75,7 @@ public class ForkJoinSolver extends SequentialSolver {
      * @param start   the starting node for the search
      * @param visited the set of visited nodes
      */
-    public ForkJoinSolver(Maze maze, int player, int start, Set<Integer> visited) {
+    public ExtraForkJoinSolver(Maze maze, int player, int start, Set<Integer> visited) {
         this(maze);  // Call the primary constructor
         this.currentPlayer = player;  // Set the player for this solver instance
         this.start = start;  // Set the start node for this solver
@@ -148,7 +148,7 @@ public class ForkJoinSolver extends SequentialSolver {
 							else {
 								if(visited.add(neighbor)){
 									step=0;
-									ForkJoinSolver childSolver = new ForkJoinSolver(maze,forkAfter,neighbor,visited);
+									ExtraForkJoinSolver childSolver = new ExtraForkJoinSolver(maze,forkAfter,neighbor,visited);
 									childSolvers.add(childSolver);
 									childSolver.fork();
 								}
@@ -169,7 +169,7 @@ public class ForkJoinSolver extends SequentialSolver {
      */
     private List<Integer> HelperJoiner() {
         
-        for (ForkJoinSolver child:childSolvers) {
+        for (ExtraForkJoinSolver child : childSolvers) {
 			List<Integer> result = child.join();
 			if(result!=null) {
 				List<Integer> myPath = pathFromTo(start, predecessor.get(child.start));
