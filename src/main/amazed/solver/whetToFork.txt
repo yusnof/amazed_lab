@@ -1,0 +1,147 @@
+When deciding when to fork in a concurrent algorithm like the ForkJoinSolver, 
+we can explore alternatives to the forkAfter parameter. 
+These alternatives could rely on more dynamic or context-sensitive conditions. 
+Here are a few strategies that could replace forkAfter for deciding when to fork:
+1. Based on Frontier Size
+Instead of forking after a fixed number of steps, we could fork new tasks based on the size of the frontier. 
+If the number of nodes in the frontier reaches a certain threshold, it's a good indication that there are enough unexplored nodes to warrant parallel exploration.
+Example:
+if (frontier.size() >= threshold) {
+    forkNewSolver();
+}
+Rationale: This allows the algorithm to adapt to the current workload. When the frontier becomes large, more work can be distributed across parallel tasks.
+
+2. Based on Node Degree (Branch Factor)
+Fork new tasks when the current node has many neighbors (i.e., high-degree nodes). 
+A high-degree node represents multiple potential paths to explore, making it a good candidate for parallelization.
+Example:
+if (maze.neighbors(currentNode).size() > degreeThreshold) {
+    forkNewSolver();
+}
+Rationale: If a node has a lot of neighbors (or connections), 
+there's a greater chance that each neighbor will lead to significantly different paths, making it efficient to explore them in parallel.
+
+3. Depth-Based Forking
+Fork based on the depth in the search tree. For instance, after reaching a certain depth in the search, 
+fork off a new task to handle further exploration from that point onward. This is similar to the traditional "depth-based" forking strategy.
+Example:
+if (depth >= maxDepth) {
+    forkNewSolver();
+}
+Rationale: This ensures that tasks are only forked when enough depth has been explored, 
+distributing work more evenly across threads and avoiding unnecessary forking at shallow depths.
+
+4. Workload Balancing
+Fork when a thread becomes idle or when the current thread’s workload exceeds a threshold compared to others. 
+This strategy could monitor the queue size and system workload, forking when there’s a large disparity between the workload of different threads.
+Example:
+if (currentThreadWorkload > avgWorkloadThreshold) {
+    forkNewSolver();
+}
+Rationale: Dynamically forks tasks based on system load, helping to balance workload distribution across available threads.
+
+5. Maze Topology Awareness (Geographical Forking)
+Fork when encountering specific maze regions or features (e.g., at a "junction" or a large room). 
+The maze could have regions where paths diverge significantly or where exploration becomes more challenging. 
+For example, forking at a junction with multiple exits might be more efficient.
+Example:
+if (isAtJunction(currentNode)) {
+    forkNewSolver();
+}
+Rationale: This uses the structure of the maze itself to determine when parallelization is advantageous, focusing on specific points of complexity.
+
+6. Dynamic Load Based on Available Processors
+Another approach is to dynamically fork based on the number of available processor cores and the current number of active threads. 
+The system forks only if there are idle processor cores that can take up new work.
+Example:
+if (ForkJoinPool.getCommonPoolParallelism() > activeThreadsCount) {
+    forkNewSolver();
+}
+Rationale: This ensures optimal CPU utilization by only forking when it would lead to better parallelism, preventing thread oversubscription.
+
+7. Priority-Based Forking
+Implement a priority system where you fork based on the priority of the node or task. 
+For instance, nodes closer to the goal or with more promising paths could trigger forks sooner.
+Example:
+if (isPromisingPath(currentNode)) {
+    forkNewSolver();
+}
+Rationale: The idea is to prioritize forking when exploring "promising" parts of the maze, 
+based on heuristics like proximity to the goal or certain patterns in the maze.
+
+8. Resource Availability Monitoring
+Monitor the memory or CPU usage, and fork when resources are available. 
+For example, if the system detects that memory usage is low or more CPU cores are idle, it can trigger forking.
+Example:
+if (availableMemory > memoryThreshold && idleCPUCount > 0) {
+    forkNewSolver();
+}
+Rationale: This is a more adaptive approach based on system-level resource monitoring, 
+ensuring that the system's capacity is utilized optimally without overloading it.
+
+9. Hybrid Approaches
+A combination of the above techniques, where multiple factors (e.g., frontier size, node degree, and depth) are combined to make the decision. 
+This allows for more nuanced control over when to fork, preventing both under-forking and over-forking.
+Example:
+if (frontier.size() > threshold && depth > minDepth) {
+    forkNewSolver();
+}
+
+Example of Implementing Frontier Size-Based Forking:
+Here’s an example of how you could modify the current solver to fork based on frontier size instead of forkAfter:
+private List<Integer> parallelSearch(int currentNode, int steps) {
+    // Add the initial node to the frontier
+    frontier.push(currentNode);
+
+    // Loop to visit each node in the frontier
+    while (!frontier.isEmpty() && !goalFound.get()) {
+        currentNode = frontier.pop();
+
+        if (!visited.add(currentNode)) {
+            continue;
+        }
+
+        maze.move(currentPlayer, currentNode);
+
+        if (maze.hasGoal(currentNode)) {
+            goalFound.set(true);
+            HelperJoiner();
+            return pathFromTo(start, currentNode);
+        }
+
+        ArrayList<Integer> neighborsToVisit = new ArrayList<>();
+        for (Integer nb : maze.neighbors(currentNode)) {
+            if (!visited.contains(nb)) {
+                neighborsToVisit.add(nb);
+            }
+        }
+
+        for (int i = 0; i < neighborsToVisit.size(); i++) {
+            int neighbor = neighborsToVisit.get(i);
+            predecessor.put(neighbor, currentNode);
+
+            // Visit the first neighbor
+            if (i == 0) {
+                frontier.push(neighbor);
+            } 
+            // Fork based on frontier size
+            else if (frontier.size() > 10) {  // Fork if frontier exceeds threshold size
+                int newPlayer = maze.newPlayer(neighbor);
+                ForkJoinSolver child = new ForkJoinSolver(maze, newPlayer, neighbor, visited);
+                childSolvers.add(child);
+                child.fork();
+            } 
+            // Otherwise, continue exploring sequentially
+            else {
+                frontier.push(neighbor);
+            }
+        }
+    }
+
+    return HelperJoiner();
+}
+
+Conclusion
+The best alternative strategy for forking depends on the characteristics of your maze and how the parallelization behaves on your hardware. 
+You can try experimenting with different approaches (e.g., frontier size, node degree, depth) 
+to see which one offers the best performance and scalability for your specific maze setup.
