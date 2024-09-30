@@ -139,10 +139,11 @@ public class ExtraForkJoinSolver extends SequentialSolver {
 						if(!visited.contains(neighbor)) {
 							predecessor.put(neighbor, currentNode);
 							
-							if (onWay || step<forkAfter) {
+							if (onWay || frontier.size()<forkAfter) {
 								
 								frontier.push(neighbor);
 								onWay=false;
+                                System.out.println(frontier.size());
 							}
 							
 							else {

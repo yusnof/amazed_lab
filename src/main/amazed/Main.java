@@ -67,13 +67,22 @@ public class Main
     throws InterruptedException
     {
         parseArguments(args);
-        Amazed amazed = new Amazed(map, sequential, forkAfter, period);
+        long average = 0; 
+        Amazed amazed; 
+       
+        amazed = new Amazed(map, sequential, forkAfter, period);
         long start = System.currentTimeMillis();
         amazed.solve();
         long stop = System.currentTimeMillis();
         long elapsed = stop - start;
-        System.out.println("Solving time: " + elapsed + " ms");
+        average = average + elapsed; 
+
+        //System.out.println("Solving time: " + elapsed + " ms");
+
         Thread.sleep(1000);
         amazed.showSolution();
+        System.out.println("Solving time: " + elapsed  + " ms");
+
+       
     }
 }

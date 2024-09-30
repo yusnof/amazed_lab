@@ -139,8 +139,8 @@ public class ForkJoinSolver extends SequentialSolver {
 						if(!visited.contains(neighbor)) {
 							predecessor.put(neighbor, currentNode);
 							
-							if (onWay || step<forkAfter) {
-								
+							if (onWay || step < forkAfter) {
+							
 								frontier.push(neighbor);
 								onWay=false;
 							}
@@ -179,5 +179,4 @@ public class ForkJoinSolver extends SequentialSolver {
 		}
 		return null;
 	}
-    
 }

@@ -6,6 +6,8 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveTask;
 
 import amazed.solver.SequentialSolver;
+
+//import amazed.solver.ExtraForkJoinSolver;
 import amazed.solver.ForkJoinSolver;
 
 /**
@@ -30,6 +32,8 @@ public class Amazed
 {
     private Maze maze;
     private RecursiveTask<List<Integer>> solver;
+    private int averagTime; 
+    private RecursiveTask<List<Integer>> solver1;
     private List<Integer> path;
 
     /**
@@ -66,10 +70,12 @@ public class Amazed
             });
         }
         maze.setDelay(animationDelay);
+        
         if (sequentialSolver)
             solver = new SequentialSolver(maze);
         else
             solver = new ForkJoinSolver(maze, forkAfter);
+            //solver1 = new ExtraForkJoinSolver(maze, forkAfter); 
     }
 
     /**
